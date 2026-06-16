@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="open_recent"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/tab_editor"
+        android:shortcutLongLabel="Open recent project">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.nexus.ide"
+            android:targetClass="com.nexus.ide.MainActivity"
+            android:data="nexus://recent" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="new_project"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="New project"
+        android:shortcutLongLabel="Create new project">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.nexus.ide"
+            android:targetClass="com.nexus.ide.MainActivity"
+            android:data="nexus://new" />
+    </shortcut>
+</shortcuts>

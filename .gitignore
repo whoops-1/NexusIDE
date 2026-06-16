@@ -1,0 +1,88 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+local.properties
+gradle-app.setting
+.gradletasknamecache
+out/
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+.vscode/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Android
+bin/
+gen/
+out/
+release/
+proguard/
+*.log
+*.hprof
+hs_err_pid*
+replay_pid*
+/build
+/captures
+/android
+/app/build
+/app/release
+/app/debug
+*.keystore
+!debug.keystore
+
+# Keystore files
+*.jks
+*.keystore
+google-services.json
+
+# Misc
+*.swp
+*.swo
+*~
+.nb-gradle/
+nb-configuration.xml
+nbproject/
+nbbuild/
+dist/
+nbdist/
+
+# Logs
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# Node (if used for tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+Thumbs.db
+.AppleDouble
+.LSOverride
+Icon?
+
+# Reports
+test-results/
+androidTest-results/
+androidTests/reports/
+
+# Test
+test-output/
+.kotlin/
