@@ -27,6 +27,7 @@ class GitService(private val workDir: File) {
     fun push(remote: String = "origin", branch: String? = null): CommandResult =
         if (branch == null) exec("push", remote) else exec("push", remote, branch)
     fun remotes(): CommandResult = exec("remote -v")
+    fun currentBranch(): CommandResult = exec("rev-parse --abbrev-ref HEAD")
     fun clone(url: String, dest: File): CommandResult = runCmd(File("."), "clone", url, dest.absolutePath)
 
     private fun exec(vararg args: String): CommandResult = runCmd(workDir, *args)

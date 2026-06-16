@@ -26,7 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.nexus.ide.presentation.screens.ai.AiChatScreen
+import com.nexus.ide.presentation.screens.ai.AiHubScreen
 import com.nexus.ide.presentation.screens.debug.DebugScreen
 import com.nexus.ide.presentation.screens.EditorScreen
 import com.nexus.ide.presentation.screens.git.GitScreen
@@ -123,7 +123,7 @@ private fun NexusTabHost(
             Tab.Editor -> EditorScreen(vm)
             Tab.Terminal -> com.nexus.ide.presentation.screens.TerminalScreen(vm)
             Tab.Git -> GitScreen(vm)
-            Tab.AI -> AiChatScreen(vm)
+            Tab.AI -> AiHubScreen(vm)
             Tab.Debug -> DebugScreen(vm)
             Tab.Settings -> SettingsScreen(vm)
         }

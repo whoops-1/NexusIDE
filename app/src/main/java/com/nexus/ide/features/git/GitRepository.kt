@@ -28,7 +28,7 @@ class GitRepository(val workDir: File) {
     }
 
     fun currentBranch(): String? {
-        val r = service.exec("rev-parse", "--abbrev-ref", "HEAD")
+        val r = service.currentBranch()
         if (!r.ok) return null
         val b = r.stdout.trim()
         return if (b.isNotEmpty()) b else null

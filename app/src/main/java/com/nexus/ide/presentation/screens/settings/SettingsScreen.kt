@@ -9,14 +9,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexus.ide.core.di.ServiceLocator
+import com.nexus.ide.data.local.prefs.SecureStore
 import com.nexus.ide.data.local.prefs.SettingsStore
 import com.nexus.ide.presentation.viewmodels.ProjectViewModel
 
@@ -24,6 +29,7 @@ import com.nexus.ide.presentation.viewmodels.ProjectViewModel
 @Composable
 fun SettingsScreen(vm: ProjectViewModel) {
     val store: SettingsStore = remember { ServiceLocator.settings }
+    val secureStore: SecureStore = remember { ServiceLocator.secureStore }
 
     // Read individual values as State so the UI reacts to changes
     var fontSizeSp by remember { mutableStateOf(store.fontSizeSp) }
@@ -33,6 +39,9 @@ fun SettingsScreen(vm: ProjectViewModel) {
     var showMinimap by remember { mutableStateOf(store.showMinimap) }
     var aiModel by remember { mutableStateOf(store.aiModel) }
     var aiProvider by remember { mutableStateOf(store.aiProvider) }
+    var apiKey by remember { mutableStateOf(secureStore.getApiKey() ?: "") }
+    var apiKeyVisible by remember { mutableStateOf(false) }
+    var baseUrl by remember { mutableStateOf(secureStore.getAiBaseUrl() ?: "https://api.openai.com/v1") }
     var termuxAutoDetect by remember { mutableStateOf(store.termuxAutoDetect) }
     var biometricLock by remember { mutableStateOf(store.biometricLock) }
     var telemetry by remember { mutableStateOf(store.telemetryEnabled) }
@@ -141,6 +150,47 @@ fun SettingsScreen(vm: ProjectViewModel) {
                     label = { Text("Model name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                OutlinedTextField(
+                    value = baseUrl,
+                    onValueChange = {
+                        baseUrl = it
+                        secureStore.put(SecureStore.KEY_AI_BASE_URL, it)
+                    },
+                    label = { Text("Base URL") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = {
+                        apiKey = it
+                        secureStore.put(SecureStore.KEY_OPENAI, it)
+                    },
+                    label = { Text("API key") },
+                    singleLine = true,
+                    visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                            Icon(
+                                if (apiKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = if (apiKeyVisible) "Hide key" else "Show key"
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            item {
+                Text(
+                    "Stored encrypted on-device. Used by both AI Chat and Nexus Agent.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                 )
             }
             item { SectionHeader("Security") }
