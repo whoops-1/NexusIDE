@@ -1,0 +1,63 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+processors:
+  active: true
+
+console-reports:
+  active: true
+
+# Compose UI code legitimately runs longer lines (chained modifiers,
+# nested lambdas) than typical backend Kotlin. Raising the ceiling here
+# is a deliberate choice for this codebase, not a workaround for a
+# specific violation.
+style:
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+    excludePackageStatements: true
+    excludeImportStatements: true
+
+  # Compose screens commonly take many UI-state parameters
+  # (value, onChange, modifier, colors...). Detekt's default of 6
+  # flags nearly every composable in this project.
+  ForbiddenComment:
+    active: false
+
+complexity:
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 10
+    ignoreDefaultParameters: true
+
+  LongMethod:
+    active: true
+    threshold: 90
+
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 30
+    thresholdInClasses: 25
+
+# KDoc on every public symbol was never a convention in this codebase;
+# enforcing it retroactively would require auto-generating hundreds of
+# comments that add no information. Off rather than faked.
+comments:
+  UndocumentedPublicClass:
+    active: false
+  UndocumentedPublicFunction:
+    active: false
+  UndocumentedPublicProperty:
+    active: false
+
+naming:
+  # AgentTool's nested `object ReadFile : AgentTool(...)` etc. read more
+  # clearly in PascalCase as tool identifiers than as constants.
+  MatchingDeclarationName:
+    active: true

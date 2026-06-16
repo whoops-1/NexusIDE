@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
+    id("io.gitlab.arturbosch.detekt")
 }
 
 android {
@@ -18,9 +19,6 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         vectorDrawables { useSupportLibrary = true }
-
-        // Limit native ABIs to keep APK lean
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
 
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
@@ -162,4 +160,24 @@ dependencies {
 
     // Markdown rendering (used in preview + README)
     implementation("com.github.jeziellago:compose-markdown:0.5.1")
+}
+
+detekt {
+    // Start from detekt's own ruleset, layer our overrides on top — never
+    // an empty config, since that silently disables rules the project
+    // already relied on without anyone noticing.
+    buildUponDefaultConfig = true
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+    parallel = true
+    autoCorrect = false
+}
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    jvmTarget = "17"
+    reports {
+        html.required.set(true)
+        xml.required.set(false)
+        sarif.required.set(false)
+        txt.required.set(false)
+    }
 }
