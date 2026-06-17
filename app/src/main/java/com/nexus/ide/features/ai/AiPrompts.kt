@@ -13,32 +13,32 @@ object AiPrompts {
 - If uncertain, ask one clarifying question."""
 
     fun explain(code: String, language: String): AiEngine.Message =
-        AiEngine.Message("user", "Explain this $language code:
+        AiEngine.Message("user", """Explain this $language code:
 ```$language
 $code
-```")
+```""")
 
     fun doc(code: String, language: String): AiEngine.Message =
-        AiEngine.Message("user", "Add doc comments to this $language code:
+        AiEngine.Message("user", """Add doc comments to this $language code:
 ```$language
 $code
-```")
+```""")
 
     fun fix(code: String, error: String, language: String): AiEngine.Message =
-        AiEngine.Message("user", "Fix this $language code. Error: $error
+        AiEngine.Message("user", """Fix this $language code. Error: $error
 ```$language
 $code
-```")
+```""")
 
     fun refactor(code: String, instruction: String, language: String): AiEngine.Message =
-        AiEngine.Message("user", "Refactor this $language code: $instruction
+        AiEngine.Message("user", """Refactor this $language code: $instruction
 ```$language
 $code
-```")
+```""")
 
     fun generateTests(code: String, language: String): AiEngine.Message =
-        AiEngine.Message("user", "Generate unit tests for this $language code:
+        AiEngine.Message("user", """Generate unit tests for this $language code:
 ```$language
 $code
-```")
+```""")
 }

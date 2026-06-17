@@ -132,11 +132,9 @@ fun TerminalView(
             )
             // Pressing enter submits the line
             LaunchedEffect(input) {
-                if (input.text.endsWith("
-")) {
+                if (input.text.endsWith("\n")) {
                     val line = input.text.dropLast(1)
-                    if (active != null) scope.launch { active.write(line + "
-") }
+                    if (active != null) scope.launch { active.write(line + "\n") }
                     input = TextFieldValue("")
                 }
             }

@@ -75,8 +75,7 @@ class JdbDebugAdapter : DebugAdapter {
                 .directory(workingDir)
                 .redirectErrorStream(true)
             val proc = pb.start()
-            s.emit(DebugEvent.Output("stdout", "jdb starting: $program
-"))
+            s.emit(DebugEvent.Output("stdout", "jdb starting: $program\n"))
             // Stream output
             Thread {
                 val buf = ByteArray(4096)
