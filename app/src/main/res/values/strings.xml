@@ -38,4 +38,10 @@
     <string name="terminal_session_channel_desc">Active local shell sessions hosted by NexusIDE</string>
     <string name="terminal_session_running">Terminal session running</string>
     <string name="terminal_session_subtitle">Tap to return to the IDE</string>
+
+    <!-- App shortcuts (res/xml/shortcuts.xml) -->
+    <string name="shortcut_open_recent_short">Recent</string>
+    <string name="shortcut_open_recent_long">Open recent project</string>
+    <string name="shortcut_new_project_short">New project</string>
+    <string name="shortcut_new_project_long">Create new project</string>
 </resources>

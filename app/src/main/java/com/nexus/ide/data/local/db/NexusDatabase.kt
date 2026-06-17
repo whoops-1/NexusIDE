@@ -49,14 +49,14 @@ abstract class NexusDatabase : RoomDatabase() {
         fun build(context: Context): NexusDatabase = Room
             .databaseBuilder(context, NexusDatabase::class.java, "nexus.db")
             .fallbackToDestructiveMigration()
-            .addCallback(object : Callback() {
+            .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     // Seed built-in snippets
                     db.execSQL(
-                        """INSERT INTO snippets(name,prefix,body,lang) VALUES
-                          ('Println', 'pln', 'println!("', 'rust'),
-                          ('For loop', 'forof', 'for (const \\${1:x} of \\${2:arr}) {\\n  \\$0\\n}', 'js'),
-                          ('Main', 'main', 'fn main() {\\n    \\$0\\n}', 'rust')
+                        """INSERT INTO snippets(name,prefix,body,lang,builtin) VALUES
+                          ('Println', 'pln', 'println!("', 'rust', 1),
+                          ('For loop', 'forof', 'for (const ${'$'}{1:x} of ${'$'}{2:arr}) {\n  ${'$'}0\n}', 'js', 1),
+                          ('Main', 'main', 'fn main() {\n    ${'$'}0\n}', 'rust', 1)
                         """.trimIndent()
                     )
                 }
