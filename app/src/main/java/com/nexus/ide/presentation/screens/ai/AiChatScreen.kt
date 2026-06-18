@@ -162,7 +162,7 @@ private fun ChatBubble(msg: AiChatViewModel.Turn) {
             )
         }
         Card(
-            modifier = Modifier.widthIn(max = 320.dp),
+            modifier = Modifier.widthIn(max = if (isUser) 280.dp else 420.dp),
             colors = CardDefaults.cardColors(containerColor = bubbleColor),
             shape = RoundedCornerShape(
                 topStart = 12.dp, topEnd = 12.dp,
@@ -171,11 +171,7 @@ private fun ChatBubble(msg: AiChatViewModel.Turn) {
             )
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = msg.text,
-                    color = textColor,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                com.nexus.ide.presentation.components.ChatRichText(text = msg.text, textColor = textColor)
                 if (!isUser && msg.text.isBlank() && msg.streaming) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),

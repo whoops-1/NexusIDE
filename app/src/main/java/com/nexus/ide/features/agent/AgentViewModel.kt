@@ -78,12 +78,16 @@ class AgentViewModel : ViewModel() {
             engine.run(
                 history = history.toList(),
                 onApprovalNeeded = { callEvent ->
-                    val ch = Channel<Boolean>(1)
-                    approvalChannel = ch
-                    _pendingApproval.value = callEvent
-                    val approved = ch.receive()
-                    _pendingApproval.value = null
-                    approved
+                    if (callEvent.tool.name in ServiceLocator.settings.toolAutoApprove) {
+                        true
+                    } else {
+                        val ch = Channel<Boolean>(1)
+                        approvalChannel = ch
+                        _pendingApproval.value = callEvent
+                        val approved = ch.receive()
+                        _pendingApproval.value = null
+                        approved
+                    }
                 }
             )
             .catch { e -> emit(AgentEvent.Error(e.message ?: "Unknown error")) }

@@ -4,101 +4,109 @@
 > contributor (human or agent) can pick up from a known state instead of
 > rediscovering the same gaps.
 
-**Last audit:** 2026-06-16
+**Last audit:** 2026-06-18
 
 ---
 
-## Status: ❌ Build is **broken** — will not compile
+## Status: build blockers from the 2026-06-16 audit are resolved
 
-The code currently in `main` is a work-in-progress from a previous session
-that mixed two different architectural designs. The Kotlin compiler will
-fail on the issues below. A fresh `git clone && ./gradlew assembleDebug`
-will **not** succeed.
+Verified by reading the actual source for all 8 previously-listed blockers
+(ServiceLocator scope, ProjectViewModel members, SettingsScreen API,
+HomeScreen signature, koinViewModel usage, MainActivity import,
+NexusTopBar, ChatRole) — none of those patterns exist in the tree anymore.
 
----
-
-## Build blockers (will prevent `assembleDebug`)
-
-### 1. `ServiceLocator` references non-existent classes
-**File:** `app/src/main/java/com/nexus/ide/core/di/ServiceLocator.kt`
-
-Imports classes that do not exist anywhere in the tree:
-- `com.nexus.ide.data.repository.AiRepository`
-- `com.nexus.ide.data.repository.EditorRepository`
-- `com.nexus.ide.data.repository.GitRepository`
-- `com.nexus.ide.data.repository.GitHubRepository`
-- `com.nexus.ide.data.repository.PluginRepository`
-- `com.nexus.ide.data.repository.ProjectRepository`
-- `com.nexus.ide.data.repository.TerminalRepository`
-- `com.nexus.ide.features.plugin.PluginHost` (package name is `plugins`, not `plugin`)
-
-**Fix:** Either (a) create stub classes for the missing types, or (b) reduce
-`ServiceLocator` to only expose what actually exists (`database`, `secureStore`,
-`settings`, `termux`, `workspace`, `recents`). Option (b) is faster.
-
-### 2. `ProjectViewModel` references non-existent `ServiceLocator` members
-**File:** `app/src/main/java/com/nexus/ide/presentation/viewmodels/ProjectViewModel.kt`
-
-Uses `ServiceLocator.workspace` and `ServiceLocator.recents` — these are not
-declared in `ServiceLocator`.
-
-**Fix:** Add `workspace` and `recents` lazy properties to `ServiceLocator`,
-or use the existing `WorkspaceService` and `RecentFiles` classes via
-`ServiceLocator.init(context)` + direct construction.
-
-### 3. `SettingsScreen` uses the wrong settings API
-**File:** `app/src/main/java/com/nexus/ide/presentation/screens/settings/SettingsScreen.kt`
-
-Imports `com.nexus.ide.data.local.prefs.SettingsRepository` (does not exist)
-and calls `ServiceLocator.settings(ctx)` as a function. The actual class is
-`SettingsStore` (no `ctx` parameter, no `state`/`setEditorFontSize` API).
-
-**Fix:** Rewrite `SettingsScreen` against the real `SettingsStore` API
-(individual getters/setters, not a single `state` flow), or create a
-`SettingsRepository` façade that wraps `SettingsStore`.
-
-### 4. `HomeScreen` signature mismatch
-**File:** `app/src/main/java/com/nexus/ide/presentation/screens/HomeScreen.kt`
-
-Declares 11 callback parameters; `Nav.kt` calls it as `HomeScreen(vm)`.
-
-**Fix:** Either change `HomeScreen` to take a `ProjectViewModel` and the
-tab controller, or change `Nav.kt` to pass all 11 callbacks.
-
-### 5. `AiChatScreen`, `DebugScreen`, `GitScreen` use `koinViewModel()`
-**Files:** `app/src/main/java/com/nexus/ide/presentation/screens/{ai,debug,git}/*.kt`
-
-These call `koinViewModel()` and accept `adapter: DebugAdapter` /
-`repo: GitRepository` parameters. Neither Koin nor those parameters are
-wired in `Nav.kt`. Also, `koin-android` / `koin-androidx-compose` are not in
-`build.gradle.kts` dependencies.
-
-**Fix:** Either add Koin and configure the modules, or rewrite the screens
-to use `ProjectViewModel` like the others.
-
-### 6. `presentation.NexusRoot` is imported from the wrong package
-**File:** `app/src/main/java/com/nexus/ide/MainActivity.kt`
-
-`import com.nexus.ide.presentation.NexusRoot` — the symbol is actually
-defined in `com.nexus.ide.presentation.navigation.NexusRoot`.
-
-**Fix:** Update the import in `MainActivity.kt`.
-
-### 7. `presentation.components.NexusTopBar` is imported but does not exist
-**Files:** Several screens import `NexusTopBar`.
-
-**Fix:** Either create `components/NexusTopBar.kt` or inline a `TopAppBar`
-wherever it's used.
-
-### 8. `features.ai.ChatRole` does not exist
-The enum is referenced from the AI engine and chat code; only `ChatMessage`
-exists in `features/ai`.
-
-**Fix:** Add the `ChatRole` enum, or rewrite the chat code to use a single
-`role: String` field on `ChatMessage`.
+**This was checked by direct code reading, not by running a real build.**
+This sandbox has no Android SDK and no network access, so nothing in this
+file is backed by an actual `./gradlew assembleDebug`. Run that locally
+before trusting any of this.
 
 ---
 
-## Issues fixed in this commit
+## Fixed this session (2026-06-18)
 
-- ✅ `Nav.kt` imports corrected (s
+- **AI 404 on every request.** `AiEngine` and `AgentEngine` both built the
+  request URL as `"${baseUrl}/chat/completions"` unconditionally. OpenRouter's
+  docs display the complete endpoint URL, so pasting it into "Base URL" (the
+  natural thing to do) doubled the path. Fixed with a shared
+  `resolveChatCompletionsUrl()` helper in `AiEngine.kt` used by both engines,
+  plus a `formatApiError()` helper that surfaces the provider's actual error
+  message instead of a raw JSON blob. Settings now has inline copy warning
+  against pasting the full endpoint URL.
+- **Editor/terminal crash.** `TerminalHost.newLocal()` called `pb.start()`
+  uncaught; the default working directory was `System.getProperty("user.home")`,
+  which resolves to `File("/")` on Android — a directory this process has no
+  permission to chdir into. `newLocal()` now returns `Result<TerminalSession>`,
+  and `TerminalView` shows a retry-able error state instead of crashing.
+  Callers now pass `WorkspaceService.workspaceRoot`, a directory the app
+  actually owns.
+- **Terminal output never rendered.** Independent of the crash: output was
+  accumulated via in-place mutation of a `StringBuilder` held in
+  `mutableStateOf`, which Compose's snapshot system never observes (it tracks
+  reassignment, not mutation). Switched to reassigning a `String`, with a
+  200k-character scrollback cap to bound memory on long-running processes.
+- **`sqlite-jdbc` removed.** It loads its native library via
+  `System.loadLibrary()`, which throws `UnsatisfiedLinkError` on Android on
+  every device, not as an edge case. `DatabaseService` was rewritten against
+  Android's built-in `SQLiteDatabase`, opened with `OPEN_READONLY` so the
+  "read-only inspector" claim is OS-enforced rather than a comment. Had zero
+  consumers, so this was a contained change.
+- **Retrofit + 2 converters removed.** Declared but never called anywhere —
+  both engines already talk to OkHttp directly with manual JSON.
+- **ProGuard rules added** for OkHttp/okio, JSch, NanoHTTPD, and
+  compose-markdown — the libraries that actually need manual keep rules.
+  These are written from each library's documented reflection behavior, not
+  verified against a real R8 `missing_rules.txt` (again: no SDK in this
+  sandbox). Treat as a starting point.
+
+## UI/UX work done this session
+
+- Editor screen: file explorer, terminal, AI assistant, and settings are now
+  independently toggleable overlay/split panels, all closed by default, so
+  the code surface gets full screen on a phone. Tab bar at top with a dirty
+  indicator and per-tab close button.
+- AI chat (both AI Chat and Agent screens): messages now render through a
+  shared `ChatRichText` component — real markdown for prose, fenced code
+  blocks get a distinct surface with a language label and copy button.
+  AI panel supports a fullscreen toggle when opened from the editor.
+- Settings: added a theme picker (swatches for the 3 built-in themes), wired
+  up the editor preference controls that already existed in `SettingsStore`
+  but had no UI, added an "Agent behavior" section exposing per-tool
+  auto-approve switches (backed by a new `SettingsStore.toolAutoApprove`
+  set, read by `AgentViewModel`'s approval gate), and a clearly-labeled
+  "coming soon" section for shortcuts/import-export/workspace prefs so the
+  IA reflects what was asked for without faking functionality that isn't
+  there yet.
+
+---
+
+## Explicitly deferred (not built this session)
+
+These were requested but are each a standalone subsystem, not a UI tweak —
+bundling all of them into one unverified pass is exactly the failure mode
+that produced the original 8 build blockers:
+
+- Persistent chat history / session management across app restarts
+- Conversation search
+- Project-level AI context (beyond what's already sent per-request)
+- Web Search agent tool (no search API integration exists yet)
+- Custom/user-defined agent tools (plugin-style tool registration)
+- Multi-agent workflows (orchestrating multiple agent roles/instances)
+- Diff viewer (side-by-side / inline / AI-generated summaries / accept-reject)
+- Keyboard shortcut customization
+- Settings import/export
+- Per-workspace setting overrides
+
+## Other gaps found during this audit (not fixed, flagged for awareness)
+
+- `ProjectViewModel.Tab.isDirty` is always `false` — nothing ever sets it
+  back to `true` when a buffer changes, so the dirty dot in the tab bar
+  will never actually show. Needs a hook into the editor session's
+  change events.
+- `AgentEngine.callApi()` makes a single blocking `execute()` call, not a
+  streamed request, so `AgentEvent.TextDelta` is defined but never emitted —
+  `AgentViewModel`'s `TextDelta` branch is dead code. Not a crash, just an
+  unused code path.
+- README.md lists JGit (Eclipse) as the Git implementation; there is no
+  JGit dependency in `build.gradle.kts` and `GitService.kt` imports nothing
+  JGit-related. Git operations almost certainly shell out to the `git`
+  binary. The README is aspirational here, not a description of the code.

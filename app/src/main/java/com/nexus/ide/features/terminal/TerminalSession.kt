@@ -92,7 +92,17 @@ class TerminalHost(
     private val _active = MutableStateFlow<String?>(null)
     val active: StateFlow<String?> = _active
 
-    fun newLocal(workingDir: File, title: String = "sh"): TerminalSession {
+    /**
+     * Spawn a new local shell. Returns [Result.failure] instead of throwing
+     * if the process can't start — most commonly because [workingDir]
+     * doesn't exist, or because this process lacks permission to chdir into
+     * it (e.g. passing the filesystem root, which Android's app sandbox
+     * cannot access even though `File("/").isDirectory` reports true).
+     * Callers should pass a directory the app actually owns, such as
+     * [com.nexus.ide.features.filesystem.WorkspaceService.workspaceRoot].
+     */
+    fun newLocal(workingDir: File, title: String = "sh"): Result<TerminalSession> = runCatching {
+        require(workingDir.isDirectory) { "Not a directory: ${workingDir.absolutePath}" }
         val pb = ProcessBuilder("/system/bin/sh", "-i")
             .directory(workingDir)
             .redirectErrorStream(false)
@@ -111,8 +121,8 @@ class TerminalHost(
         )
         sessions[session.id] = session
         if (_active.value == null) _active.value = session.id
-        return session
-    }
+        session
+    }.onFailure { e -> Logger.e("Term", "newLocal failed for ${workingDir.absolutePath}", e) }
 
     fun get(id: String): TerminalSession? = sessions[id]
     fun all(): List<TerminalSession> = sessions.values.toList()

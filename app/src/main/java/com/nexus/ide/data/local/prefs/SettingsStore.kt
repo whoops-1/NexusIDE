@@ -85,6 +85,21 @@ class SettingsStore(context: Context) {
             ?: emptyList()
         set(v) { prefs.edit { putString(KEY_RECENT_FILES, v.joinToString("\n")) } }
 
+    /**
+     * Names of agent tools (see [com.nexus.ide.features.agent.AgentTool.name])
+     * the user has marked as trusted, so the agent runs them without asking
+     * for per-call approval. Only tools that normally require approval
+     * (write_file, run_command, delete_file, rename_file) are meaningful
+     * here — read-only tools never gate on approval in the first place.
+     */
+    var toolAutoApprove: Set<String>
+        get() = prefs.getString(KEY_TOOL_AUTO_APPROVE, null)
+            ?.split(",")
+            ?.filter { it.isNotBlank() }
+            ?.toSet()
+            ?: emptySet()
+        set(v) { prefs.edit { putString(KEY_TOOL_AUTO_APPROVE, v.joinToString(",")) } }
+
     companion object {
         private const val KEY_THEME = "theme"
         private const val KEY_FONT_SIZE = "font_size"
@@ -100,6 +115,7 @@ class SettingsStore(context: Context) {
         private const val KEY_BIOMETRIC = "biometric"
         private const val KEY_TELEMETRY = "telemetry"
         private const val KEY_RECENT_FILES = "recent_files"
+        private const val KEY_TOOL_AUTO_APPROVE = "tool_auto_approve"
     }
 }
 

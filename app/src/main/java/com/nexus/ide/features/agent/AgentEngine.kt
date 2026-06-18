@@ -3,6 +3,8 @@ package com.nexus.ide.features.agent
 import com.nexus.ide.core.utils.Logger
 import com.nexus.ide.data.local.prefs.SecureStore
 import com.nexus.ide.data.local.prefs.SettingsStore
+import com.nexus.ide.features.ai.formatApiError
+import com.nexus.ide.features.ai.resolveChatCompletionsUrl
 import com.nexus.ide.features.filesystem.WorkspaceService
 import com.nexus.ide.features.terminal.TermuxBridge
 import kotlinx.coroutines.Dispatchers
@@ -204,7 +206,7 @@ Rules you must follow:
         }
 
         val req = Request.Builder()
-            .url("$baseUrl/chat/completions")
+            .url(resolveChatCompletionsUrl(baseUrl))
             .addHeader("Authorization", "Bearer $key")
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .build()
@@ -212,7 +214,7 @@ Rules you must follow:
         return try {
             client.newCall(req).execute().use { resp ->
                 val raw = resp.body?.string().orEmpty()
-                if (!resp.isSuccessful) return ApiResult.Error("[${resp.code}] $raw")
+                if (!resp.isSuccessful) return ApiResult.Error(formatApiError(resp.code, raw))
 
                 val obj = JSONObject(raw)
                 val choice = obj.getJSONArray("choices").getJSONObject(0)

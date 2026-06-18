@@ -31,6 +31,6 @@ fun TerminalScreen(vm: ProjectViewModel) {
     Scaffold(
         topBar = { NexusTopBar(title = "Terminal") }
     ) { padding ->
-        TerminalView(host = host, modifier = Modifier.fillMaxSize().padding(padding))
+        TerminalView(host = host, workingDir = ServiceLocator.workspace.workspaceRoot, modifier = Modifier.fillMaxSize().padding(padding))
     }
 }

@@ -16,6 +16,36 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
+ * Normalizes a user-provided base URL into a full chat-completions endpoint.
+ *
+ * Providers are inconsistent about what they show in their own docs: some
+ * (OpenAI) document the host root and expect callers to append the route;
+ * others (OpenRouter) display the complete endpoint URL, which is exactly
+ * what gets pasted into a "Base URL" field. Blindly appending
+ * "/chat/completions" in the second case doubles the path and produces a
+ * 404 that has nothing to do with the API key or model being wrong.
+ */
+fun resolveChatCompletionsUrl(baseUrl: String): String {
+    val trimmed = baseUrl.trim().trimEnd('/')
+    return if (trimmed.endsWith("/chat/completions")) trimmed else "$trimmed/chat/completions"
+}
+
+/**
+ * Extracts a human-readable message from a provider error response.
+ * OpenAI-compatible APIs return {"error": {"message": "...", "code": ...}};
+ * surfacing that message instead of the raw JSON blob is what turns
+ * "[error 404] {"error":{"message":"Not Found"...}}" into something a user
+ * can actually act on.
+ */
+fun formatApiError(httpCode: Int, rawBody: String?): String {
+    val body = rawBody.orEmpty()
+    val message = try {
+        JSONObject(body).optJSONObject("error")?.optString("message")
+    } catch (e: Exception) { null }
+    return if (!message.isNullOrBlank()) "[$httpCode] $message" else "[$httpCode] ${body.ifBlank { "Request failed" }}"
+}
+
+/**
  * Talks to OpenAI-compatible chat completion APIs. NexusIDE supports
  * multiple providers (OpenAI, Anthropic via OpenRouter, custom
  * OpenAI-style endpoints) and exposes a uniform [complete] stream.
@@ -52,7 +82,7 @@ class AiEngine(private val store: SecureStore) {
             put("messages", arr)
         }
         val req = Request.Builder()
-            .url("${options.baseUrl}/chat/completions")
+            .url(resolveChatCompletionsUrl(options.baseUrl))
             .addHeader("Authorization", "Bearer $key")
             .addHeader("Accept", "text/event-stream")
             .post(body.toString().toRequestBody("application/json".toMediaType()))
@@ -60,7 +90,7 @@ class AiEngine(private val store: SecureStore) {
         try {
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) {
-                    emit("[error ${resp.code}] ${resp.body?.string()}")
+                    emit(formatApiError(resp.code, resp.body?.string()))
                     return@flow
                 }
                 val source = resp.body?.source() ?: return@flow
@@ -98,14 +128,14 @@ class AiEngine(private val store: SecureStore) {
             put("messages", arr)
         }
         val req = Request.Builder()
-            .url("${options.baseUrl}/chat/completions")
+            .url(resolveChatCompletionsUrl(options.baseUrl))
             .addHeader("Authorization", "Bearer $key")
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .build()
         try {
             client.newCall(req).execute().use { resp ->
                 val raw = resp.body?.string().orEmpty()
-                if (!resp.isSuccessful) return@withContext "[error ${resp.code}] $raw"
+                if (!resp.isSuccessful) return@withContext formatApiError(resp.code, raw)
                 val obj = JSONObject(raw)
                 obj.getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
             }

@@ -1,20 +1,33 @@
 package com.nexus.ide.presentation.screens.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -23,6 +36,8 @@ import androidx.compose.ui.unit.sp
 import com.nexus.ide.core.di.ServiceLocator
 import com.nexus.ide.data.local.prefs.SecureStore
 import com.nexus.ide.data.local.prefs.SettingsStore
+import com.nexus.ide.features.agent.AgentTool
+import com.nexus.ide.presentation.theme.BUILT_IN_THEMES
 import com.nexus.ide.presentation.viewmodels.ProjectViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,6 +45,7 @@ import com.nexus.ide.presentation.viewmodels.ProjectViewModel
 fun SettingsScreen(vm: ProjectViewModel) {
     val store: SettingsStore = remember { ServiceLocator.settings }
     val secureStore: SecureStore = remember { ServiceLocator.secureStore }
+    val activeThemeId by store.themeId.collectAsState()
 
     // Read individual values as State so the UI reacts to changes
     var fontSizeSp by remember { mutableStateOf(store.fontSizeSp) }
@@ -45,179 +61,199 @@ fun SettingsScreen(vm: ProjectViewModel) {
     var termuxAutoDetect by remember { mutableStateOf(store.termuxAutoDetect) }
     var biometricLock by remember { mutableStateOf(store.biometricLock) }
     var telemetry by remember { mutableStateOf(store.telemetryEnabled) }
+    var autoApprove by remember { mutableStateOf(store.toolAutoApprove) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Settings") })
-        }
-    ) { pad ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(pad)
-                .padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            item { SectionHeader("Editor") }
-            item {
-                SettingSlider(
-                    title = "Font size",
-                    value = fontSizeSp,
-                    range = 9f..28f,
-                    onChange = {
-                        fontSizeSp = it
-                        store.fontSizeSp = it
-                    }
-                )
-            }
-            item {
-                SettingSlider(
-                    title = "Tab width",
-                    value = tabSize,
-                    range = 2f..8f,
-                    steps = 6,
-                    onChange = {
-                        tabSize = it
-                        store.tabSize = it.toInt()
-                    }
-                )
-            }
-            item {
-                SwitchSetting(
-                    title = "Word wrap",
-                    description = "Wrap long lines at viewport edge",
-                    checked = wordWrap,
-                    onChange = {
-                        wordWrap = it
-                        store.wordWrap = it
-                    }
-                )
-            }
-            item {
-                SwitchSetting(
-                    title = "Minimap",
-                    description = "Show a minimap overview in the editor gutter",
-                    checked = showMinimap,
-                    onChange = {
-                        showMinimap = it
-                        store.showMinimap = it
-                    }
-                )
-            }
-            item {
-                SwitchSetting(
-                    title = "Font ligatures",
-                    description = "Use programming ligatures where supported",
-                    checked = useLigatures,
-                    onChange = {
-                        useLigatures = it
-                        store.useLigatures = it
-                    }
-                )
-            }
-            item { SectionHeader("Terminal") }
-            item {
-                SwitchSetting(
-                    title = "Auto-detect Termux",
-                    description = "Automatically connect to an installed Termux session",
-                    checked = termuxAutoDetect,
-                    onChange = {
-                        termuxAutoDetect = it
-                        store.termuxAutoDetect = it
-                    }
-                )
-            }
-            item { SectionHeader("AI") }
-            item {
-                OutlinedTextField(
-                    value = aiProvider,
-                    onValueChange = {
-                        aiProvider = it
-                        store.aiProvider = it
-                    },
-                    label = { Text("Provider (openai / openrouter / ollama)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = aiModel,
-                    onValueChange = {
-                        aiModel = it
-                        store.aiModel = it
-                    },
-                    label = { Text("Model name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = baseUrl,
-                    onValueChange = {
-                        baseUrl = it
-                        secureStore.put(SecureStore.KEY_AI_BASE_URL, it)
-                    },
-                    label = { Text("Base URL") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = {
-                        apiKey = it
-                        secureStore.put(SecureStore.KEY_OPENAI, it)
-                    },
-                    label = { Text("API key") },
-                    singleLine = true,
-                    visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
-                            Icon(
-                                if (apiKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = if (apiKeyVisible) "Hide key" else "Show key"
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                Text(
-                    "Stored encrypted on-device. Used by both AI Chat and Nexus Agent.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-                )
-            }
-            item { SectionHeader("Security") }
-            item {
-                SwitchSetting(
-                    title = "Biometric lock",
-                    description = "Require fingerprint / face unlock to open the app",
-                    checked = biometricLock,
-                    onChange = {
-                        biometricLock = it
-                        store.biometricLock = it
-                    }
-                )
-            }
-            item { SectionHeader("Privacy") }
-            item {
-                SwitchSetting(
-                    title = "Anonymous telemetry",
-                    description = "Help improve NexusIDE by sharing crash reports",
-                    checked = telemetry,
-                    onChange = {
-                        telemetry = it
-                        store.telemetryEnabled = it
-                    }
-                )
+    val approvalGatedTools = remember {
+        AgentTool.all.filter { it.requiresApproval }
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item { SectionHeader("Theme") }
+        item {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+                items(BUILT_IN_THEMES) { theme ->
+                    ThemeSwatch(
+                        name = theme.name,
+                        background = theme.background,
+                        accentA = theme.keyword,
+                        accentB = theme.string,
+                        accentC = theme.function,
+                        selected = theme.id == activeThemeId,
+                        onClick = { store.setThemeId(theme.id) }
+                    )
+                }
             }
         }
+
+        item { SectionHeader("Editor") }
+        item {
+            SettingSlider(
+                title = "Font size",
+                value = fontSizeSp,
+                range = 9f..28f,
+                onChange = { fontSizeSp = it; store.fontSizeSp = it }
+            )
+        }
+        item {
+            SettingSlider(
+                title = "Tab width",
+                value = tabSize,
+                range = 2f..8f,
+                steps = 6,
+                onChange = { tabSize = it; store.tabSize = it.toInt() }
+            )
+        }
+        item {
+            SwitchSetting(
+                title = "Word wrap",
+                description = "Wrap long lines at viewport edge",
+                checked = wordWrap,
+                onChange = { wordWrap = it; store.wordWrap = it }
+            )
+        }
+        item {
+            SwitchSetting(
+                title = "Minimap",
+                description = "Show a minimap overview in the editor gutter",
+                checked = showMinimap,
+                onChange = { showMinimap = it; store.showMinimap = it }
+            )
+        }
+        item {
+            SwitchSetting(
+                title = "Font ligatures",
+                description = "Use programming ligatures where supported",
+                checked = useLigatures,
+                onChange = { useLigatures = it; store.useLigatures = it }
+            )
+        }
+
+        item { SectionHeader("Terminal") }
+        item {
+            SwitchSetting(
+                title = "Auto-detect Termux",
+                description = "Automatically connect to an installed Termux session",
+                checked = termuxAutoDetect,
+                onChange = { termuxAutoDetect = it; store.termuxAutoDetect = it }
+            )
+        }
+
+        item { SectionHeader("AI model") }
+        item {
+            OutlinedTextField(
+                value = aiProvider,
+                onValueChange = { aiProvider = it; store.aiProvider = it },
+                label = { Text("Provider (openai / openrouter / ollama)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = aiModel,
+                onValueChange = { aiModel = it; store.aiModel = it },
+                label = { Text("Model name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = { baseUrl = it; secureStore.put(SecureStore.KEY_AI_BASE_URL, it) },
+                label = { Text("Base URL") },
+                placeholder = { Text("https://openrouter.ai/api/v1") },
+                supportingText = {
+                    Text(
+                        "Host root only — do not include /chat/completions. " +
+                            "If your provider's docs show the full endpoint URL, " +
+                            "paste everything before \"/chat/completions\".",
+                        fontSize = 11.sp
+                    )
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it; secureStore.put(SecureStore.KEY_OPENAI, it) },
+                label = { Text("API key") },
+                singleLine = true,
+                visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                        Icon(
+                            if (apiKeyVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            contentDescription = if (apiKeyVisible) "Hide key" else "Show key"
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            Text(
+                "Stored encrypted on-device. Used by both AI Chat and Nexus Agent.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+            )
+        }
+
+        item { SectionHeader("Agent behavior") }
+        item {
+            Text(
+                "Tools below normally pause for your approval before each run. " +
+                    "Mark a tool trusted to let the agent use it without asking.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+            )
+        }
+        items(approvalGatedTools) { tool ->
+            SwitchSetting(
+                title = tool.name.replace("_", " ").replaceFirstChar { it.uppercase() },
+                description = tool.description,
+                checked = tool.name in autoApprove,
+                onChange = { enabled ->
+                    autoApprove = if (enabled) autoApprove + tool.name else autoApprove - tool.name
+                    store.toolAutoApprove = autoApprove
+                }
+            )
+        }
+
+        item { SectionHeader("Security") }
+        item {
+            SwitchSetting(
+                title = "Biometric lock",
+                description = "Require fingerprint / face unlock to open the app",
+                checked = biometricLock,
+                onChange = { biometricLock = it; store.biometricLock = it }
+            )
+        }
+
+        item { SectionHeader("Privacy") }
+        item {
+            SwitchSetting(
+                title = "Anonymous telemetry",
+                description = "Help improve NexusIDE by sharing crash reports",
+                checked = telemetry,
+                onChange = { telemetry = it; store.telemetryEnabled = it }
+            )
+        }
+
+        item { SectionHeader("More") }
+        item { ComingSoonRow("Keyboard shortcuts", "Custom keybindings for editor actions") }
+        item { ComingSoonRow("Import / export settings", "Move your configuration between devices") }
+        item { ComingSoonRow("Workspace preferences", "Per-project overrides for the settings above") }
     }
 }
 
@@ -261,11 +297,68 @@ private fun SettingSlider(
             Text(title, modifier = Modifier.weight(1f))
             Text("${value.toInt()}", style = MaterialTheme.typography.bodySmall)
         }
-        Slider(
-            value = value,
-            onValueChange = onChange,
-            valueRange = range,
-            steps = steps
-        )
+        Slider(value = value, onValueChange = onChange, valueRange = range, steps = steps)
     }
+}
+
+@Composable
+private fun ThemeSwatch(
+    name: String,
+    background: androidx.compose.ui.graphics.Color,
+    accentA: androidx.compose.ui.graphics.Color,
+    accentB: androidx.compose.ui.graphics.Color,
+    accentC: androidx.compose.ui.graphics.Color,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.width(84.dp).clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(background)
+                .border(
+                    width = if (selected) 2.dp else 1.dp,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                    shape = RoundedCornerShape(10.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf(accentA, accentB, accentC).forEach { c ->
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(c))
+                }
+            }
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(10.dp))
+                }
+            }
+        }
+        Text(name, fontSize = 11.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+@Composable
+private fun ComingSoonRow(title: String, description: String) {
+    ListItem(
+        headlineContent = { Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        supportingContent = { Text(description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        trailingContent = {
+            Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                Text("Soon", fontSize = 10.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    )
 }
