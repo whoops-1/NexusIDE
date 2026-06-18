@@ -400,7 +400,9 @@ internal class LocalShell(
         command = command.joinToString(" "),
         cwd = cwd.absolutePath,
         running = alive,
-        pid = runCatching { proc?.pid()?.toLong() }.getOrNull(),
+        pid = proc?.let { p ->
+            runCatching { p.javaClass.getMethod("pid").invoke(p) as? Long }.getOrNull()
+        },
     )
 
     private inline fun thread(name: String, crossinline block: () -> Unit): Thread =

@@ -3,6 +3,8 @@ package com.nexus.ide.features.tools
 import com.nexus.ide.core.utils.Logger
 import com.nexus.ide.data.local.prefs.SecureStore
 import com.nexus.ide.features.ai.AiEngine
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
 /**

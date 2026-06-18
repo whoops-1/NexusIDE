@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexus.ide.core.di.ServiceLocator
 import com.nexus.ide.data.local.prefs.SettingsStore
-import com.nexus.ide.domain.models.OpenFile
 import com.nexus.ide.features.editor.EditorSession
 import com.nexus.ide.features.filesystem.RecentFiles
 import com.nexus.ide.features.filesystem.WorkspaceService
@@ -23,13 +22,16 @@ class ProjectViewModel : ViewModel() {
     private val recents: RecentFiles = ServiceLocator.recents
     private val settings: SettingsStore = ServiceLocator.settings
 
-    private val _openFiles = MutableStateFlow<List<OpenFile>>(emptyList())
-    val openFiles: StateFlow<List<OpenFile>> = _openFiles.asStateFlow()
+    /** An open editor tab. Purely a UI-tracking concern for this ViewModel - not a domain model. */
+    data class Tab(val file: File, val displayName: String, val isDirty: Boolean)
+
+    private val _openFiles = MutableStateFlow<List<Tab>>(emptyList())
+    val openFiles: StateFlow<List<Tab>> = _openFiles.asStateFlow()
 
     private val _activeIndex = MutableStateFlow(-1)
     val activeIndex: StateFlow<Int> = _activeIndex.asStateFlow()
 
-    val activeFile: StateFlow<OpenFile?> = combine(_openFiles, _activeIndex) { files, idx ->
+    val activeFile: StateFlow<Tab?> = combine(_openFiles, _activeIndex) { files, idx ->
         files.getOrNull(idx.coerceIn(-1, files.lastIndex))
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -46,8 +48,8 @@ class ProjectViewModel : ViewModel() {
         val existing = _openFiles.value.indexOfFirst { it.file == file }
         if (existing >= 0) { _activeIndex.value = existing; return }
         val session = sessionFor(file)
-        val openFile = OpenFile(file = file, displayName = file.name, isDirty = false)
-        _openFiles.value = _openFiles.value + openFile
+        val tab = Tab(file = file, displayName = file.name, isDirty = false)
+        _openFiles.value = _openFiles.value + tab
         _activeIndex.value = _openFiles.value.lastIndex
         recents.add(file.absolutePath)
     }

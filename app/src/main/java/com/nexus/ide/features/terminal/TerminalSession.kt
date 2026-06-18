@@ -101,11 +101,13 @@ class TerminalHost(
             pb.environment()["PATH"] = "/data/data/com.termux/files/usr/bin:/system/bin:/system/xbin"
         }
         val proc = pb.start()
+        val sessionId = UUID.randomUUID().toString()
         val session = TerminalSession(
+            id = sessionId,
             title = title,
             workingDir = workingDir,
             process = proc,
-            onExit = { _ -> onSessionClosed(id) }
+            onExit = { _ -> onSessionClosed(sessionId) }
         )
         sessions[session.id] = session
         if (_active.value == null) _active.value = session.id

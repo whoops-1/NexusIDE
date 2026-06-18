@@ -13,15 +13,12 @@ class DatabaseService {
     data class TableInfo(val name: String, val rootPage: Int, val sql: String?)
     data class QueryResult(val columns: List<String>, val rows: List<List<String>>)
 
-    private var native: org.sqlite.core.DB? = null
-    private var stmt: org.sqlite.core.Stmt? = null
+    private var native: java.sql.Connection? = null
 
     fun open(file: File): Boolean {
         return try {
-            // org.xerial:sqlite-jdbc style — we use the bundled driver
             Class.forName("org.sqlite.JDBC")
-            java.sql.DriverManager.getConnection("jdbc:sqlite:${file.absolutePath}")
-                .also { native = it as org.sqlite.core.DB }
+            native = java.sql.DriverManager.getConnection("jdbc:sqlite:${file.absolutePath}")
             true
         } catch (e: Exception) {
             Logger.e("DB", "open failed", e); false
@@ -56,8 +53,7 @@ class DatabaseService {
     }
 
     fun close() {
-        try { stmt?.close() } catch (_: Exception) {}
-        try { (native as? java.sql.Connection)?.close() } catch (_: Exception) {}
+        try { native?.close() } catch (_: Exception) {}
         native = null
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -105,10 +106,11 @@ fun EditorView(
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     for (i in first until minOf(last, totalLines)) {
-                        val tokens = session.highlight.tokensFor(i, buffer.getLine(i))
+                        val lineText = buffer.getLine(i)
+                        val tokens = session.highlight.tokensFor(i, lineText)
                         CodeLine(
                             lineIndex = i,
-                            text = buffer.getLine(i),
+                            text = lineText,
                             tokens = tokens,
                             theme = theme,
                             fontSize = fontSize,
@@ -210,6 +212,7 @@ private fun highlightToAnnotated(
             TokenKind.Annotation -> theme.annotation
             TokenKind.Preprocessor -> theme.preprocessor
             TokenKind.Plain -> theme.foreground
+            TokenKind.Regex -> theme.string
             TokenKind.Whitespace -> Color.Transparent
         }
         addStyle(SpanStyle(color = color), t.start, t.end)

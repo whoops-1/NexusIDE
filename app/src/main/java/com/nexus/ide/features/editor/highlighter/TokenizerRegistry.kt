@@ -6,6 +6,6 @@ package com.nexus.ide.features.editor.highlighter
  * need to know which one is the registry.
  */
 object TokenizerRegistry {
-    fun forLanguage(id: String): Tokenizers.Lexer = Tokenizers.forLanguage(id)
-    fun available(): Set<String> = Tokenizers.byLanguageId().keys
+    fun forLanguage(id: String): Lexer = Tokenizers.forLanguage(id)
+    fun available(): Set<String> = Tokenizers.availableLanguageIds()
 }

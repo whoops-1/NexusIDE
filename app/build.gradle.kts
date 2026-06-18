@@ -143,6 +143,16 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
 
+    // SSH terminal sessions. Using the actively maintained mwiede fork —
+    // upstream com.jcraft:jsch has had no release since 2017.
+    implementation("com.github.mwiede:jsch:0.2.18")
+
+    // Embedded dev web server for serving the workspace over LAN.
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
+
+    // SQLite JDBC driver for the in-app database inspector.
+    implementation("org.xerial:sqlite-jdbc:3.46.0.0")
+
     // Document file (SAF) + storage
     implementation("androidx.documentfile:documentfile:1.0.1")
 

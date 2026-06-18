@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.nexus.ide.core.di.LocalServiceLocator
 import com.nexus.ide.core.di.ServiceLocator
@@ -27,7 +29,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CompositionLocalProvider(LocalServiceLocator provides ServiceLocator) {
-                NexusTheme {
+                val themeId by ServiceLocator.settings.themeId.collectAsState()
+                NexusTheme(themeId = themeId) {
                     NexusRoot(onReady = { ready = true })
                 }
             }

@@ -1,7 +1,6 @@
 package com.nexus.ide.features.editor.actions
 
 import com.nexus.ide.features.editor.EditorSession
-import com.nexus.ide.features.editor.Selection
 
 /**
  * High-level editor actions invoked by toolbar buttons, menu items, and

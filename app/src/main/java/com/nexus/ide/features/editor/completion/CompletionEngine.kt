@@ -11,7 +11,7 @@ class CompletionEngine {
     data class Item(val text: String, val kind: Kind, val detail: String? = null)
     enum class Kind { Keyword, Builtin, Type, Variable, Function, Snippet }
 
-    private val keywordCache = HashMap<String, List<Item>>()
+    private val keywordCache = HashMap<String, Set<String>>()
     private var bufferSnapshot: String = ""
     private var indexedText: String = ""
     private val variables = HashSet<String>()

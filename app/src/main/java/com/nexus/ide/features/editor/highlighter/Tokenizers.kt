@@ -17,10 +17,6 @@ package com.nexus.ide.features.editor.highlighter
  */
 object Tokenizers {
 
-    fun interface Lexer {
-        fun lex(src: String): List<Token>
-    }
-
     private val numRegex = Regex("""0[xX][0-9A-Fa-f_]+[uUlLfF]?|\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?[fFlLuU]?""")
     private val identRegex = Regex("""[A-Za-z_$][A-Za-z0-9_$]*""")
 
@@ -362,9 +358,9 @@ object Tokenizers {
                     if (src[i] == '\\' && i + 1 < n) i += 2 else i++
                 }
                 if (i < n) i++
-                // Heuristic: if the previous non-whitespace token is `:` we're a value, else a key.
-                val kind = TokenKind.String
-                out.add(Token(start, i, kind, if (i + 1 < n && src[i] == ':') TokenModifier.Property else TokenModifier.None))
+                // Heuristic: if the next non-quote char is `:` we're a JSON key, else a string value.
+                val kind = if (i + 1 < n && src[i] == ':') TokenKind.Property else TokenKind.String
+                out.add(Token(start, i, kind))
                 continue
             }
             if (c == '-' || c.isDigit()) {
@@ -827,4 +823,5 @@ object Tokenizers {
     )
 
     fun forLanguage(id: String): Lexer = byLanguageId[id] ?: byLanguageId.getValue("plaintext")
+    fun availableLanguageIds(): Set<String> = byLanguageId.keys
 }

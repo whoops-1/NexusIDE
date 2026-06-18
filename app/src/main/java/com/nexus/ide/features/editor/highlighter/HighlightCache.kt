@@ -1,6 +1,5 @@
 package com.nexus.ide.features.editor.highlighter
 
-import com.nexus.ide.features.editor.TextBuffer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,6 +11,11 @@ import kotlinx.coroutines.flow.asStateFlow
  * renders a small window. We tokenize on demand and cache the result
  * keyed by (lineIndex, contentHash). When the buffer mutates we evict
  * stale lines downstream of the change.
+ *
+ * Deliberately takes line text rather than a TextBuffer: the caller
+ * (EditorView) already has the text on hand for rendering, so this
+ * avoids a second line lookup per visible line per recomposition, and
+ * keeps the cache decoupled from any particular buffer implementation.
  */
 class HighlightCache(private val lexer: Lexer) {
 
@@ -33,19 +37,12 @@ class HighlightCache(private val lexer: Lexer) {
         _stateVersion.value = _stateVersion.value + 1
     }
 
-    fun tokensFor(buffer: TextBuffer, line: Int): List<Token> {
-        val src = buffer.getLine(line)
-        val hash = src.hashCode()
+    fun tokensFor(line: Int, text: String): List<Token> {
+        val hash = text.hashCode()
         val existing = cache[line]
         if (existing != null && existing.hash == hash) return existing.tokens
-        val tokens = lexer.lex(src)
-        cache[line] = Entry(src, tokens, hash)
+        val tokens = lexer.lex(text)
+        cache[line] = Entry(text, tokens, hash)
         return tokens
-    }
-
-    fun rangeTokensFor(buffer: TextBuffer, startLine: Int, endLine: Int): Map<Int, List<Token>> {
-        val out = HashMap<Int, List<Token>>(endLine - startLine + 1)
-        for (i in startLine..endLine) out[i] = tokensFor(buffer, i)
-        return out
     }
 }

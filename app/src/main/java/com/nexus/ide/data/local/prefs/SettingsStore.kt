@@ -3,7 +3,6 @@ package com.nexus.ide.data.local.prefs
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.nexus.ide.presentation.theme.NexusTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,22 +11,23 @@ import kotlinx.coroutines.flow.asStateFlow
  * Plain (non-encrypted) settings store. Anything that is not a secret
  * lives here: theme, font size, recent paths, AI model choice, etc.
  *
- * Exposes a StateFlow for the active theme so Compose can recompose
- * without each screen having to re-read prefs synchronously.
+ * Exposes a StateFlow for the active theme id so Compose can recompose
+ * without each screen having to re-read prefs synchronously. The theme
+ * id is resolved to an actual EditorTheme by the presentation layer via
+ * findTheme(id) - this class intentionally has no dependency on Compose
+ * or the theme package.
  */
 class SettingsStore(context: Context) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences("nexus_settings", Context.MODE_PRIVATE)
 
-    private val _theme = MutableStateFlow(readTheme())
-    val theme: StateFlow<NexusTheme> = _theme.asStateFlow()
+    private val _themeId = MutableStateFlow(prefs.getString(KEY_THEME, null) ?: "github-dark")
+    val themeId: StateFlow<String> = _themeId.asStateFlow()
 
-    fun setTheme(t: NexusTheme) {
-        prefs.edit { putString(KEY_THEME, t.id) }
-        _theme.value = t
+    fun setThemeId(id: String) {
+        prefs.edit { putString(KEY_THEME, id) }
+        _themeId.value = id
     }
-
-    private fun readTheme(): NexusTheme = NexusTheme.byId(prefs.getString(KEY_THEME, null) ?: NexusTheme.DarkPlus.id)
 
     var fontSizeSp: Float
         get() = prefs.getFloat(KEY_FONT_SIZE, 14f)

@@ -15,7 +15,7 @@ import java.nio.charset.StandardCharsets
  */
 class EditorSession(
     val file: File?,
-    val languageId: String = LanguageRegistry.detect(file).id,
+    val languageId: String = file?.let { LanguageRegistry.detect(it).id } ?: "plaintext",
     initialText: String = "",
 ) {
 
@@ -37,7 +37,10 @@ class EditorSession(
     private val _selection = MutableStateFlow<Selection?>(null)
     val selection: StateFlow<Selection?> = _selection.asStateFlow()
 
-    data class Cursor(val line: Int, val col: Int)
+    data class Cursor(val line: Int, val col: Int) : Comparable<Cursor> {
+        override fun compareTo(other: Cursor): Int =
+            if (line != other.line) line.compareTo(other.line) else col.compareTo(other.col)
+    }
     data class Selection(val anchor: Cursor, val caret: Cursor) {
         val start: Cursor get() = if (anchor <= caret) anchor else caret
         val end: Cursor get() = if (anchor <= caret) caret else anchor
@@ -112,7 +115,7 @@ class EditorSession(
         val current = collectTextInRange(inv.line, inv.startCol, inv.endLine, inv.endCol)
         buffer.delete(inv.line, inv.startCol, inv.endLine, inv.endCol)
         if (inv.text.isNotEmpty()) buffer.insert(inv.line, inv.startCol, inv.text)
-        undo.pushRedo(UndoStack.Op.Inverse.Replace(inv.line, inv.startCol, inv.endLine, inv.endCol, current))
+        undo.pushRedo(UndoStack.Op(UndoStack.Op.Inverse.Replace(inv.line, inv.startCol, inv.endLine, inv.endCol, current)))
         moveCursor(inv.line, inv.startCol)
         markDirty()
         return true
@@ -156,18 +159,19 @@ class EditorSession(
     }
 
     fun loadFromDisk() {
-        if (file == null || !file.exists()) return
-        val text = runCatching { file.readText(StandardCharsets.UTF_8) }.getOrDefault("")
+        val f = file ?: return
+        if (!f.exists()) return
+        val text = runCatching { f.readText(StandardCharsets.UTF_8) }.getOrDefault("")
         buffer.replaceAll(text)
         undo.clear()
         _dirty.value = false
     }
 
     fun saveToDisk(): Boolean {
-        if (file == null) return false
+        val f = file ?: return false
         return runCatching {
-            file.parentFile?.mkdirs()
-            file.writeText(buffer.getText(), StandardCharsets.UTF_8)
+            f.parentFile?.mkdirs()
+            f.writeText(buffer.getText(), StandardCharsets.UTF_8)
             true
         }.getOrDefault(false).also { ok -> if (ok) _dirty.value = false }
     }

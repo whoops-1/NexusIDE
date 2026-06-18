@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -42,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexus.ide.features.terminal.TerminalHost
 import com.nexus.ide.features.terminal.TerminalSession
-import com.nexus.ide.presentation.theme.NexusLocal
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -50,13 +50,15 @@ import kotlinx.coroutines.launch
  * Tabbed terminal view. Each tab is a [TerminalSession]; the toolbar shows
  * tabs with a "+" to spawn a new shell. Lines stream in as the host
  * process produces them.
+ *
+ * Uses MaterialTheme.colorScheme rather than the editor's syntax-color
+ * palette - this is generic terminal chrome, not the code surface.
  */
 @Composable
 fun TerminalView(
     host: TerminalHost,
     modifier: Modifier = Modifier
 ) {
-    val theme = NexusLocal.nexusTheme.current
     val sessions = remember { mutableStateListOf<TerminalSession>() }
     val activeId by host.active.collectAsState()
     var input by remember { mutableStateOf(TextFieldValue("")) }
@@ -72,20 +74,25 @@ fun TerminalView(
 
     val active = sessions.firstOrNull { it.id == activeId } ?: sessions.firstOrNull()
 
-    Column(modifier = modifier.background(theme.editor.bg)) {
+    Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         // Tab bar
-        Surface(color = theme.gutter.bg, modifier = Modifier.fillMaxWidth().height(40.dp)) {
+        Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth().height(40.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
                 sessions.forEach { s ->
                     val sel = s.id == activeId
                     Surface(
-                        color = if (sel) theme.editor.bg else theme.gutter.bg,
+                        color = if (sel) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.padding(end = 2.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(s.title, color = if (sel) theme.editor.fg else theme.editor.muted, modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp), fontSize = 12.sp)
+                            Text(
+                                s.title,
+                                color = if (sel) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                                fontSize = 12.sp
+                            )
                             IconButton(onClick = { host.close(s.id); sessions.remove(s) }, modifier = Modifier.height(24.dp)) {
-                                Icon(Icons.Filled.Close, contentDescription = "Close", tint = theme.editor.muted)
+                                Icon(Icons.Filled.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -95,7 +102,7 @@ fun TerminalView(
                     sessions.add(next)
                     host.setActive(next.id)
                 }) {
-                    Icon(Icons.Filled.Add, contentDescription = "New", tint = theme.editor.fg)
+                    Icon(Icons.Filled.Add, contentDescription = "New", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -112,23 +119,23 @@ fun TerminalView(
                 Text(
                     text = buildAnnotatedString {
                         val text = buffered.toString()
-                        withStyle(SpanStyle(color = theme.editor.fg)) { append(text) }
+                        withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurface)) { append(text) }
                     },
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
-                    style = TextStyle(color = theme.editor.fg)
+                    style = TextStyle(color = MaterialTheme.colorScheme.onSurface)
                 )
             }
         }
         // Input row
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("$", color = theme.editor.accent, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+            Text("$", color = MaterialTheme.colorScheme.primary, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
             BasicTextField(
                 value = input,
                 onValueChange = { input = it },
-                textStyle = LocalTextStyle.current.copy(color = theme.editor.fg, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
+                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface, fontFamily = FontFamily.Monospace, fontSize = 12.sp),
                 modifier = Modifier.weight(1f),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(theme.editor.accent)
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
             )
             // Pressing enter submits the line
             LaunchedEffect(input) {

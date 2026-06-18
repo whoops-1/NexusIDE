@@ -49,9 +49,8 @@ class SshSession {
         val sess = session ?: throw IllegalStateException("not connected")
         val channel = sess.openChannel("exec") as ChannelExec
         channel.setCommand(command)
-        channel.inputStream = null
+        channel.setInputStream(null)
         val out = StringBuilder()
-        channel.outputStream = java.io.ByteArrayOutputStream()
         val input = channel.inputStream
         channel.connect()
         val buf = ByteArray(4096)
