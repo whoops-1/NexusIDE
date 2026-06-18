@@ -45,7 +45,7 @@ class WebServer(
     private fun serveFile(file: File): Response {
         val mime = mimeFor(file.extension)
         return try {
-            newFixedLengthResponse(Response.Status.OK, mime, file.inputStream())
+            newFixedLengthResponse(Response.Status.OK, mime, file.inputStream(), file.length())
         } catch (e: Exception) {
             Logger.e("Web", "serveFile failed", e)
             newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, e.message ?: "error")
