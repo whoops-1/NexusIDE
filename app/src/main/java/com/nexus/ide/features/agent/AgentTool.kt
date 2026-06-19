@@ -55,6 +55,12 @@ sealed class AgentTool(
         requiresApproval = true
     )
 
+    object WebSearch : AgentTool(
+        name = "web_search",
+        description = "Search the web for current information. Returns a list of results with titles, URLs, and snippets.",
+        requiresApproval = false
+    )
+
     object RenameFile : AgentTool(
         name = "rename_file",
         description = "Rename or move a file within the workspace.",
@@ -64,7 +70,7 @@ sealed class AgentTool(
     companion object {
         val all: List<AgentTool> = listOf(
             ReadFile, WriteFile, ListDirectory, SearchFiles,
-            RunCommand, DeleteFile, RenameFile
+            RunCommand, DeleteFile, RenameFile, WebSearch
         )
 
         fun byName(name: String): AgentTool? = all.firstOrNull { it.name == name }
@@ -167,6 +173,16 @@ sealed class AgentTool(
                     })
                 })
                 put("required", JSONArray().put("from").put("to"))
+            }
+            is WebSearch -> JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("query", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "The search query to look up on the web")
+                    })
+                })
+                put("required", JSONArray().put("query"))
             }
         }
     }

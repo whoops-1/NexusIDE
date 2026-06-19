@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.nexus.ide.LocalOpenFolderPicker
 import com.nexus.ide.core.di.ServiceLocator
 import com.nexus.ide.features.terminal.TerminalHost
 import com.nexus.ide.presentation.components.EditorView
@@ -136,6 +137,10 @@ fun EditorScreen(vm: ProjectViewModel) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                     if (activeFile != null) {
                         val session = vm.sessionFor(activeFile!!.file)
+                        val isDirty by session.dirty.collectAsState()
+                        LaunchedEffect(isDirty, activeFile) {
+                            if (isDirty) vm.markDirty(activeFile!!.file)
+                        }
                         EditorView(session = session, theme = editorTheme, modifier = Modifier.fillMaxSize())
                     } else {
                         EmptyEditorState(onOpenExplorer = { overlayPanel = OverlayPanel.Explorer })
@@ -178,7 +183,8 @@ fun EditorScreen(vm: ProjectViewModel) {
                     PanelHeader(title = "Explorer", onClose = { overlayPanel = null })
                     FileExplorer(
                         workspace = ServiceLocator.workspace,
-                        onOpenFile = { file -> vm.openFile(file); overlayPanel = null }
+                        onOpenFile = { file -> vm.openFile(file); overlayPanel = null },
+                        onOpenFolder = LocalOpenFolderPicker.current
                     )
                 }
             }

@@ -100,6 +100,18 @@ Rules you must follow:
 
             when (result) {
                 is ApiResult.Text -> {
+                    // Emit the text in chunks so the UI streams progressively
+                    // rather than showing nothing until the full response lands.
+                    // The API call is non-streaming (tool-calling requires full
+                    // JSON back), so we simulate streaming here at the display layer.
+                    val text = result.text
+                    val chunkSize = 8
+                    var offset = 0
+                    while (offset < text.length) {
+                        val end = minOf(offset + chunkSize, text.length)
+                        trySend(AgentEvent.TextDelta(text.substring(offset, end)))
+                        offset = end
+                    }
                     trySend(AgentEvent.TextComplete(result.text))
                     trySend(AgentEvent.Done)
                     break
@@ -196,13 +208,25 @@ Rules you must follow:
         val model = settings.aiModel
         val baseUrl = secureStore.getAiBaseUrl() ?: "https://api.openai.com/v1"
 
+        // Models that don't support the OpenAI function-calling tool schema.
+        // When matched, we omit "tools" from the request body and rely on
+        // the system prompt asking the model to emit JSON tool calls in-text.
+        val noToolsSupport = model.startsWith("nvidia/") ||
+            model.startsWith("meta-llama/") ||
+            model.contains("nemotron") ||
+            model.contains("mistral") ||
+            model.contains("minimax") ||
+            model.contains(":free")
+
         val body = JSONObject().apply {
             put("model", model)
             put("temperature", 0.2)
             put("max_tokens", 4096)
             put("messages", messages)
-            put("tools", AgentTool.toApiJson())
-            put("tool_choice", "auto")
+            if (!noToolsSupport) {
+                put("tools", AgentTool.toApiJson())
+                put("tool_choice", "auto")
+            }
         }
 
         val req = Request.Builder()
@@ -336,6 +360,35 @@ Rules you must follow:
                     to.parentFile?.mkdirs()
                     val ok = from.renameTo(to)
                     if (ok) "Renamed ${args["from"]} → ${args["to"]}" else "Error: rename failed"
+                }
+                is AgentTool.WebSearch -> {
+                    val query = args["query"] ?: return "Error: missing query"
+                    try {
+                        // DuckDuckGo lite — no API key required
+                        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+                        val req = okhttp3.Request.Builder()
+                            .url("https://lite.duckduckgo.com/lite/?q=$encoded")
+                            .addHeader("User-Agent", "NexusIDE/1.0")
+                            .get()
+                            .build()
+                        client.newCall(req).execute().use { resp ->
+                            if (!resp.isSuccessful) return "Search failed: HTTP ${resp.code}"
+                            val html = resp.body?.string() ?: return "Search failed: empty response"
+                            // Extract result snippets from DuckDuckGo lite HTML
+                            val snippets = mutableListOf<String>()
+                            val linkRe = Regex("""<a[^>]+class="result-link"[^>]*>([^<]+)</a>""")
+                            val snippetRe = Regex("""<td class="result-snippet">([^<]+)</td>""")
+                            val links = linkRe.findAll(html).map { it.groupValues[1].trim() }.toList()
+                            val snips = snippetRe.findAll(html).map { it.groupValues[1].trim() }.toList()
+                            for (i in links.indices.take(5)) {
+                                snippets.add("${i+1}. ${links.getOrNull(i) ?: ""}\n   ${snips.getOrNull(i) ?: ""}")
+                            }
+                            if (snippets.isEmpty()) "No results found for: $query"
+                            else "Search results for \"$query\":\n\n${snippets.joinToString("\n\n")}"
+                        }
+                    } catch (e: Exception) {
+                        "Search error: ${e.message}"
+                    }
                 }
             }
         } catch (e: SecurityException) {

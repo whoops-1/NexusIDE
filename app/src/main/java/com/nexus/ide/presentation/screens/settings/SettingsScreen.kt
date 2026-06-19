@@ -40,6 +40,21 @@ import com.nexus.ide.features.agent.AgentTool
 import com.nexus.ide.presentation.theme.BUILT_IN_THEMES
 import com.nexus.ide.presentation.viewmodels.ProjectViewModel
 
+private data class ProviderPreset(
+    val label: String,
+    val providerId: String,
+    val baseUrl: String,
+    val defaultModel: String
+)
+
+private val providerPresets = listOf(
+    ProviderPreset("OpenAI", "openai", "https://api.openai.com/v1", "gpt-4o-mini"),
+    ProviderPreset("OpenRouter", "openrouter", "https://openrouter.ai/api/v1", "openai/gpt-4o-mini"),
+    ProviderPreset("NVIDIA NIM", "nvidia", "https://integrate.api.nvidia.com/v1", "nvidia/nemotron-3-ultra-550b-a55b"),
+    ProviderPreset("MiniMax", "minimax", "https://api.minimax.chat/v1", "MiniMax-Text-01"),
+    ProviderPreset("Ollama", "ollama", "http://localhost:11434/v1", "llama3.2"),
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(vm: ProjectViewModel) {
@@ -146,10 +161,41 @@ fun SettingsScreen(vm: ProjectViewModel) {
 
         item { SectionHeader("AI model") }
         item {
+            Text(
+                "Provider presets",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+                items(providerPresets) { preset ->
+                    val isActive = aiProvider == preset.providerId
+                    Surface(
+                        onClick = {
+                            aiProvider = preset.providerId; store.aiProvider = preset.providerId
+                            aiModel = preset.defaultModel; store.aiModel = preset.defaultModel
+                            baseUrl = preset.baseUrl; secureStore.put(SecureStore.KEY_AI_BASE_URL, preset.baseUrl)
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.padding(end = 4.dp)
+                    ) {
+                        Text(
+                            preset.label,
+                            fontSize = 12.sp,
+                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+        item {
             OutlinedTextField(
                 value = aiProvider,
                 onValueChange = { aiProvider = it; store.aiProvider = it },
-                label = { Text("Provider (openai / openrouter / ollama)") },
+                label = { Text("Provider ID") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )

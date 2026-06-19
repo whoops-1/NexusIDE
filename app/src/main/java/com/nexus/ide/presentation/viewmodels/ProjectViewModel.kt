@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -22,7 +25,7 @@ class ProjectViewModel : ViewModel() {
     private val recents: RecentFiles = ServiceLocator.recents
     private val settings: SettingsStore = ServiceLocator.settings
 
-    /** An open editor tab. Purely a UI-tracking concern for this ViewModel - not a domain model. */
+    /** An open editor tab. Purely a UI-tracking concern for this ViewModel — not a domain model. */
     data class Tab(val file: File, val displayName: String, val isDirty: Boolean)
 
     private val _openFiles = MutableStateFlow<List<Tab>>(emptyList())
@@ -38,6 +41,33 @@ class ProjectViewModel : ViewModel() {
     private val _sessions = mutableMapOf<File, EditorSession>()
     val sessions: Map<File, EditorSession> get() = _sessions
 
+    init {
+        // Restore last session — skip files that no longer exist on disk
+        val lastPaths = settings.lastOpenFiles
+        val lastIdx = settings.lastActiveIndex
+        if (lastPaths.isNotEmpty()) {
+            val validFiles = lastPaths.mapNotNull { path ->
+                File(path).takeIf { it.exists() && it.isFile }
+            }
+            if (validFiles.isNotEmpty()) {
+                val tabs = validFiles.map { f ->
+                    Tab(file = f, displayName = f.name, isDirty = false)
+                }
+                _openFiles.value = tabs
+                _activeIndex.value = lastIdx.coerceIn(0, tabs.lastIndex)
+            }
+        }
+
+        // Auto-save session state whenever tabs or active index change
+        _openFiles.drop(1).onEach { tabs ->
+            settings.lastOpenFiles = tabs.map { it.file.absolutePath }
+        }.launchIn(viewModelScope)
+
+        _activeIndex.drop(1).onEach { idx ->
+            settings.lastActiveIndex = idx.coerceAtLeast(0)
+        }.launchIn(viewModelScope)
+    }
+
     fun sessionFor(file: File): EditorSession = _sessions.getOrPut(file) {
         val initial = runCatching { file.readText() }.getOrDefault("")
         EditorSession(file = file, initialText = initial)
@@ -47,7 +77,7 @@ class ProjectViewModel : ViewModel() {
         if (file.isDirectory) return
         val existing = _openFiles.value.indexOfFirst { it.file == file }
         if (existing >= 0) { _activeIndex.value = existing; return }
-        val session = sessionFor(file)
+        sessionFor(file)  // pre-warm session
         val tab = Tab(file = file, displayName = file.name, isDirty = false)
         _openFiles.value = _openFiles.value + tab
         _activeIndex.value = _openFiles.value.lastIndex
@@ -73,5 +103,16 @@ class ProjectViewModel : ViewModel() {
             workspace.writeText(active.file, text)
         }
         session.markSaved()
+        // Flip isDirty off in the tab list too
+        _openFiles.value = _openFiles.value.mapIndexed { i, tab ->
+            if (i == _activeIndex.value) tab.copy(isDirty = false) else tab
+        }
+    }
+
+    /** Call this when an edit happens in a session so the tab dirty-dot lights up. */
+    fun markDirty(file: File) {
+        _openFiles.value = _openFiles.value.map { tab ->
+            if (tab.file == file) tab.copy(isDirty = true) else tab
+        }
     }
 }

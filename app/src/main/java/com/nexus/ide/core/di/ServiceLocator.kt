@@ -5,6 +5,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.nexus.ide.data.local.db.NexusDatabase
 import com.nexus.ide.data.local.prefs.SecureStore
 import com.nexus.ide.data.local.prefs.SettingsStore
+import com.nexus.ide.features.ai.ChatSession
 import com.nexus.ide.features.filesystem.RecentFiles
 import com.nexus.ide.features.filesystem.WorkspaceService
 import com.nexus.ide.features.terminal.TermuxBridge
@@ -32,6 +33,7 @@ object ServiceLocator {
     val termux: TermuxBridge by lazy { TermuxBridge(appContext) }
     val workspace: WorkspaceService by lazy { WorkspaceService(appContext) }
     val recents: RecentFiles by lazy { RecentFiles(appContext, settings) }
+    val chatSession: ChatSession by lazy { ChatSession(database.aiMessageDao()) }
 
     fun init(context: Context) {
         appContext = context.applicationContext

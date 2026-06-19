@@ -7,20 +7,33 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,6 +73,14 @@ fun EditorView(
     val version by buffer.version.collectAsState()
     val cursor by session.cursor.collectAsState()
     val totalLines = buffer.lineCount()
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    // Bring up the IME for the newly-active file as soon as it's shown.
+    LaunchedEffect(session) {
+        focusRequester.requestFocus()
+        keyboard?.show()
+    }
 
     BoxWithConstraints(modifier = modifier.background(theme.background)) {
         val viewportPx = with(density) { maxHeight.toPx() }
@@ -92,6 +113,8 @@ fun EditorView(
                             val x = (offset.x - with(density) { 48.dp.toPx() }).coerceAtLeast(0f)
                             val col = estimateColumn(buffer.getLine(line), x, fontSize)
                             session.moveCursor(line, col)
+                            focusRequester.requestFocus()
+                            keyboard?.show()
                         }
                     }
                     .pointerInput(Unit) {
@@ -120,7 +143,82 @@ fun EditorView(
                 }
             }
         }
+
+        // Invisible IME shim. EditorView intentionally doesn't use
+        // BasicTextField to *render* the document (see file doc comment),
+        // but it still needs a focusable text field to actually receive
+        // soft-keyboard and hardware-keyboard input and forward it into
+        // the EditorSession. This was the missing half of that design —
+        // there was no shim at all, so nothing could ever be typed.
+        EditorKeyboardShim(session = session, focusRequester = focusRequester)
     }
+}
+
+/** Stable sentinel so backspace always has a character to delete, even from "empty". */
+private const val SHIM_SENTINEL = "\u200B"
+private val SHIM_BASELINE = TextFieldValue(SHIM_SENTINEL, TextRange(SHIM_SENTINEL.length))
+
+/**
+ * Invisible 1dp text field that owns IME focus for the code surface above.
+ * Character insertion flows through [androidx.compose.foundation.text.BasicTextField]'s
+ * onValueChange (works for both soft-keyboard composing and hardware
+ * keyboards); navigation/control keys are intercepted directly via
+ * onKeyEvent so they never double-fire through onValueChange too.
+ */
+@Composable
+private fun EditorKeyboardShim(
+    session: EditorSession,
+    focusRequester: FocusRequester,
+    tabWidth: Int = 4
+) {
+    var fieldValue by remember(session) { mutableStateOf(SHIM_BASELINE) }
+
+    BasicTextField(
+        value = fieldValue,
+        onValueChange = { newValue ->
+            val newText = newValue.text
+            when {
+                newText.length > SHIM_SENTINEL.length -> {
+                    val inserted = when {
+                        newText.startsWith(SHIM_SENTINEL) -> newText.substring(SHIM_SENTINEL.length)
+                        newText.endsWith(SHIM_SENTINEL) -> newText.substring(0, newText.length - SHIM_SENTINEL.length)
+                        else -> newText.replace(SHIM_SENTINEL, "")
+                    }
+                    if (inserted.isNotEmpty()) {
+                        val parts = inserted.split("\n")
+                        parts.forEachIndexed { idx, part ->
+                            if (part.isNotEmpty()) session.type(part)
+                            if (idx < parts.size - 1) session.enter()
+                        }
+                    }
+                }
+                newText.length < SHIM_SENTINEL.length -> session.backspace()
+                else -> { /* composing update, no net length change yet */ }
+            }
+            fieldValue = SHIM_BASELINE
+        },
+        modifier = Modifier
+            .size(1.dp)
+            .focusRequester(focusRequester)
+            .onKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                val c = session.cursor.value
+                when (event.key) {
+                    Key.Backspace -> { session.backspace(); true }
+                    Key.Delete -> { session.deleteForward(); true }
+                    Key.Enter, Key.NumPadEnter -> { session.enter(); true }
+                    Key.Tab -> { session.type(" ".repeat(tabWidth)); true }
+                    Key.DirectionLeft -> { session.moveCursor(c.line, c.col - 1); true }
+                    Key.DirectionRight -> { session.moveCursor(c.line, c.col + 1); true }
+                    Key.DirectionUp -> { session.moveCursor(c.line - 1, c.col); true }
+                    Key.DirectionDown -> { session.moveCursor(c.line + 1, c.col); true }
+                    else -> false
+                }
+            },
+        textStyle = TextStyle(color = Color.Transparent, fontSize = 1.sp),
+        cursorBrush = SolidColor(Color.Transparent),
+        keyboardOptions = KeyboardOptions(autoCorrect = false)
+    )
 }
 
 @Composable

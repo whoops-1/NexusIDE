@@ -77,6 +77,21 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_TELEMETRY, false)
         set(v) { prefs.edit { putBoolean(KEY_TELEMETRY, v) } }
 
+    /**
+     * Absolute paths of all tabs open when the user last left the editor,
+     * stored as newline-delimited strings. Restored by [ProjectViewModel]
+     * on next launch so the user's session survives process death.
+     */
+    var lastOpenFiles: List<String>
+        get() = prefs.getString(KEY_LAST_OPEN_FILES, null)
+            ?.lines()?.filter { it.isNotBlank() } ?: emptyList()
+        set(v) { prefs.edit { putString(KEY_LAST_OPEN_FILES, v.joinToString("\n")) } }
+
+    /** Index of the active tab when the user last left the editor. */
+    var lastActiveIndex: Int
+        get() = prefs.getInt(KEY_LAST_ACTIVE_INDEX, 0)
+        set(v) { prefs.edit { putInt(KEY_LAST_ACTIVE_INDEX, v) } }
+
     /** MRU file list stored as newline-delimited absolute paths. */
     var recentFiles: List<String>
         get() = prefs.getString(KEY_RECENT_FILES, null)
@@ -116,6 +131,8 @@ class SettingsStore(context: Context) {
         private const val KEY_TELEMETRY = "telemetry"
         private const val KEY_RECENT_FILES = "recent_files"
         private const val KEY_TOOL_AUTO_APPROVE = "tool_auto_approve"
+        private const val KEY_LAST_OPEN_FILES = "last_open_files"
+        private const val KEY_LAST_ACTIVE_INDEX = "last_active_index"
     }
 }
 
